@@ -71,6 +71,11 @@ class ConversationManager:
                 session = ConversationSession(session_id, user_context)
                 self.sessions[session_id] = session
             
+            # If session exists, check if we need to update its context
+            # (e.g., user just logged in)
+            elif user_context and session.user_context != user_context:
+                session.update_user_context(user_context)
+            
             # Step 2: Update Context
             session.add_message("user", message)
             
