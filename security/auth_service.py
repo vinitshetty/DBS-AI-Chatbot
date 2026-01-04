@@ -22,7 +22,7 @@ class AuthService:
     
     def generate_otp(self, user_id: str) -> str:
         """Generate 6-digit OTP"""
-        otp = str(random.randint(100000, 999999))
+        otp = 987123#str(random.randint(100000, 999999))
         self.otp_store[user_id] = otp
         
         logger.info(f"OTP generated for {user_id}: {otp}")

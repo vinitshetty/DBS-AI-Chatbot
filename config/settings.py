@@ -26,8 +26,7 @@ class Settings(BaseSettings):
     os.environ["CHROMA_TELEMETRY_ENABLED"] = "false"
     
     # Embeddings
-    EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
-    EMBEDDING_DIMENSION: int = 384
+    EMBEDDING_MODEL: str = "mistral-embed"
     
     # RAG Configuration
     RAG_TOP_K: int = 5

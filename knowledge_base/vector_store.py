@@ -2,6 +2,9 @@
 Vector Store - ChromaDB integration for document storage and retrieval
 """
 
+import os
+os.environ["ANONYMIZED_TELEMETRY"] = "FALSE"
+
 import chromadb
 from chromadb.config import Settings
 import logging

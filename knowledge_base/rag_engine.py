@@ -15,7 +15,7 @@ from langchain_community.document_loaders import PyPDFLoader, TextLoader
 from langchain.schema import Document
 
 from knowledge_base.vector_store import VectorStore
-from knowledge_base.embeddings import EmbeddingsGenerator
+from knowledge_base.embeddings import MistralEmbeddings
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ class RAGEngine:
         from config.settings import settings
         
         self.vector_store = VectorStore()
-        self.embeddings = EmbeddingsGenerator()
+        self.embeddings = MistralEmbeddings()
         self.settings = settings
         
         # Text splitter for chunking documents
@@ -121,11 +121,7 @@ class RAGEngine:
             
             # Generate embeddings in batch
             logger.info(f"Generating embeddings for {len(all_chunks)} chunks...")
-            embeddings = self.embeddings.generate_batch(
-                all_chunks,
-                batch_size=32,
-                show_progress=True
-            )
+            embeddings = self.embeddings.embed_documents(all_chunks)
             
             # Add to vector store
             logger.info("Storing documents in vector database...")
@@ -182,7 +178,7 @@ class RAGEngine:
                 top_k = self.settings.RAG_TOP_K
             
             # Generate query embedding
-            query_embedding = self.embeddings.generate(query)
+            query_embedding = self.embeddings.embed_query(query)
             
             # Build metadata filter
             metadata_filter = {}
