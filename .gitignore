@@ -1,0 +1,18 @@
+# Environments
+.venv
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Lock file
+uv.lock
+
+# Data
+data/
+
+# Logs
+logs/

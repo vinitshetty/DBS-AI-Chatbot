@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DBS AI Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .message-enter { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .typing-indicator span {
+            animation: blink 1.4s infinite;
+            animation-fill-mode: both;
+        }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes blink {
+            0%, 80%, 100% { opacity: 0; }
+            40% { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-red-50 to-orange-50 h-screen flex flex-col">
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-red-600 to-red-700 text-white p-4 shadow-lg">
+        <div class="max-w-4xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center">
+                    <span class="text-red-600 font-bold text-xl">D</span>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold">DBS AI Assistant</h1>
+                    <p class="text-xs text-red-100">Production-Grade Architecture Demo</p>
+                </div>
+            </div>
+            <div id="status" class="flex items-center gap-2 bg-green-500 bg-opacity-30 px-3 py-1 rounded-full">
+                <div class="w-2 h-2 bg-green-300 rounded-full animate-pulse"></div>
+                <span class="text-xs">Connected</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Messages Container -->
+    <div class="flex-1 overflow-y-auto p-4" id="messagesContainer">
+        <div class="max-w-4xl mx-auto space-y-4" id="messages"></div>
+    </div>
+
+    <!-- Input Area -->
+    <div class="border-t border-gray-200 bg-white p-4">
+        <div class="max-w-4xl mx-auto">
+            <div class="flex gap-2 mb-2">
+                <input
+                    type="text"
+                    id="messageInput"
+                    placeholder="Ask me anything about banking..."
+                    class="flex-1 border-2 border-gray-300 rounded-lg px-4 py-3 focus:border-red-500 focus:outline-none"
+                />
+                <button
+                    id="sendBtn"
+                    class="bg-red-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-red-700 transition-colors"
+                >
+                    Send
+                </button>
+            </div>
+            <div class="text-xs text-gray-500 space-y-1">
+                <div>💡 <strong>Try these:</strong></div>
+                <div class="flex gap-2 flex-wrap">
+                    <button class="suggestion bg-gray-100 px-2 py-1 rounded hover:bg-gray-200">Opening hours?</button>
+                    <button class="suggestion bg-gray-100 px-2 py-1 rounded hover:bg-gray-200">Transfer limits?</button>
+                    <button class="suggestion bg-gray-100 px-2 py-1 rounded hover:bg-gray-200">Lock my card</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api/v1';
+        let sessionId = null;
+        let authToken = null;
+
+        // Add initial message
+        addMessage('assistant', 'Hello! I\'m the DBS AI Assistant built on production-grade architecture. I can help with banking queries, account information, and transactions. How can I assist you?');
+
+        // Send message
+        async function sendMessage(text) {
+            if (!text.trim()) return;
+
+            addMessage('user', text);
+            showTyping();
+
+            try {
+                const response = await fetch(`${API_BASE}/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
+                        ...(sessionId && { 'X-Session-ID': sessionId })
+                    },
+                    body: JSON.stringify({ message: text })
+                });
+
+                const data = await response.json();
+                hideTyping();
+
+                if (data.session_id) sessionId = data.session_id;
+
+                addMessage('assistant', data.message, data);
+
+            } catch (error) {
+                hideTyping();
+                addMessage('assistant', 'I apologize, but I\'m having trouble connecting. Please check if the backend is running on port 8000.');
+                console.error('Error:', error);
+            }
+        }
+
+        // Add message to UI
+        function addMessage(role, content, metadata = {}) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'} message-enter`;
+
+            const bubble = document.createElement('div');
+            bubble.className = `max-w-[80%] ${role === 'user' ? 'bg-red-600 text-white' : 'bg-white border border-gray-200'} rounded-2xl px-4 py-3 shadow-sm`;
+
+            const text = document.createElement('p');
+            text.className = 'text-sm whitespace-pre-wrap';
+            text.textContent = content;
+            bubble.appendChild(text);
+
+            // Add metadata tags if present
+            if (metadata.intent) {
+                const intentTag = document.createElement('div');
+                intentTag.className = 'mt-2 text-xs opacity-70';
+                intentTag.innerHTML = `<span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded">Intent: ${metadata.intent}</span>`;
+                bubble.appendChild(intentTag);
+            }
+
+            const time = document.createElement('div');
+            time.className = 'text-xs opacity-60 mt-2';
+            time.textContent = new Date().toLocaleTimeString('en-SG', { hour: '2-digit', minute: '2-digit' });
+            bubble.appendChild(time);
+
+            messageDiv.appendChild(bubble);
+            messagesDiv.appendChild(messageDiv);
+
+            scrollToBottom();
+        }
+
+        function showTyping() {
+            const messagesDiv = document.getElementById('messages');
+            const typing = document.createElement('div');
+            typing.id = 'typing';
+            typing.className = 'flex justify-start';
+            typing.innerHTML = `
+                <div class="bg-white border border-gray-200 rounded-2xl px-4 py-3 shadow-sm">
+                    <div class="typing-indicator flex gap-1">
+                        <span class="w-2 h-2 bg-gray-400 rounded-full"></span>
+                        <span class="w-2 h-2 bg-gray-400 rounded-full"></span>
+                        <span class="w-2 h-2 bg-gray-400 rounded-full"></span>
+                    </div>
+                </div>
+            `;
+            messagesDiv.appendChild(typing);
+            scrollToBottom();
+        }
+
+        function hideTyping() {
+            const typing = document.getElementById('typing');
+            if (typing) typing.remove();
+        }
+
+        function scrollToBottom() {
+            const container = document.getElementById('messagesContainer');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Event listeners
+        document.getElementById('sendBtn').addEventListener('click', () => {
+            const input = document.getElementById('messageInput');
+            sendMessage(input.value);
+            input.value = '';
+        });
+
+        document.getElementById('messageInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const input = document.getElementById('messageInput');
+                sendMessage(input.value);
+                input.value = '';
+            }
+        });
+
+        // Suggestion buttons
+        document.querySelectorAll('.suggestion').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const text = btn.textContent;
+                sendMessage(text);
+            });
+        });
+
+        // Check backend health
+        async function checkHealth() {
+            try {
+                const response = await fetch(`${API_BASE.replace('/api/v1', '')}/health`);
+                const data = await response.json();
+                document.getElementById('status').innerHTML = `
+                    <div class="w-2 h-2 bg-green-300 rounded-full animate-pulse"></div>
+                    <span class="text-xs">Connected</span>
+                `;
+            } catch {
+                document.getElementById('status').innerHTML = `
+                    <div class="w-2 h-2 bg-red-300 rounded-full"></div>
+                    <span class="text-xs">Disconnected</span>
+                `;
+            }
+        }
+
+        setInterval(checkHealth, 5000);
+    </script>
+</body>
+</html>
